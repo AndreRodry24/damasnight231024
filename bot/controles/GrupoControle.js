@@ -326,40 +326,61 @@ export class GrupoControle {
             consoleErro(err, "BEM VINDO")
         }
     }
+//==========================================Recurso ANTI-LINK (inicio)=====================================================
+    
+async filtroAntiLink(c, mensagemBaileys, botInfo) {
+    try {
+        const comandos_info = comandosInfo(botInfo);
+        const { corpo, legenda, remetente, id_chat, mensagem_grupo, mensagem, grupo } = mensagemBaileys;
+        const usuarioTexto = corpo || legenda;
+        const { id_grupo, admins, bot_admin } = { ...grupo };
 
-    // Recurso ANTI-LINK
-    async alterarAntiLink(id_grupo, status = true) {
-        await this.grupo.alterarAntiLink(id_grupo, status)
-    }
+        // Exibir o remetente para verificação
+        console.log(`Remetente: ${remetente}`);
 
-    async filtroAntiLink(c, mensagemBaileys, botInfo) {
-        try {
-            const comandos_info = comandosInfo(botInfo)
-            const { corpo, legenda, remetente, id_chat, mensagem_grupo, mensagem, grupo } = mensagemBaileys
-            const usuarioTexto = corpo || legenda
-            const { id_grupo, admins, bot_admin } = { ...grupo }
-            if (!mensagem_grupo) return true
-            if (!grupo?.antilink) return true
+        // Verifica se é uma mensagem de grupo
+        if (!mensagem_grupo) return true;
 
-            if (!bot_admin) {
-                await this.alterarAntiLink(id_grupo, false)
-            } else {
-                if (usuarioTexto) {
-                    const textoComUrl = usuarioTexto.match(new RegExp(/(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?/img))
-                    if (textoComUrl && !admins.includes(remetente)) {
-                        await socket.enviarTextoComMencoes(c, id_chat, criarTexto(comandos_info.grupo.alink.msgs.detectou, remetente.replace("@s.whatsapp.net", "")), [remetente])
-                        await socket.deletarMensagem(c, mensagem)
-                        return false
+        // Verifica se o recurso ANTI-LINK está ativado no grupo
+        if (!grupo?.antilink) return true;
+
+        // Desativa ANTI-LINK se o bot não for admin
+        if (!bot_admin) {
+            await this.alterarAntiLink(id_grupo, false);
+        } else {
+            if (usuarioTexto) {
+                // Verifica se o remetente é o número permitido
+                if (remetente !== "558599495181@s.whatsapp.net") {
+                    // Verifica se o texto contém uma URL válida (https://, http://, www.)
+                    const textoComUrl = usuarioTexto.match(new RegExp(/((https?:\/\/|www\.)[^\s]+)/img));
+
+                    // Se encontrou URL, apaga a mensagem e remove o usuário
+                    if (textoComUrl) {
+                        await socket.enviarTextoComMencoes(c, id_chat, criarTexto(comandos_info.grupo.alink.msgs.detectou, remetente.replace("@s.whatsapp.net", "")), [remetente]);
+                        await socket.deletarMensagem(c, mensagem); // Apaga a mensagem
+                        
+                        // Remove o usuário do grupo
+                        if (!admins.includes(remetente)) {
+                            await socket.removerParticipante(c, id_grupo, remetente);
+                            console.log(`Usuário ${remetente} foi removido por postar um link.`);
+                        }
+                        
+                        return false;
                     }
+                } else {
+                    console.log(`O remetente ${remetente} está autorizado a enviar links.`);
                 }
             }
-            return true
-        } catch (err) {
-            err.message = `antiLink - ${err.message}`
-            consoleErro(err, "ANTI-LINK")
-            return true
         }
+        return true;
+    } catch (err) {
+        err.message = `antiLink - ${err.message}`;
+        consoleErro(err, "ANTI-LINK");
+        return true;
     }
+}
+
+//========================================Recurso ANTI-LINK (fim)================================================
 
     //Recurso AUTO-STICKER
     async alterarAutoSticker(id_grupo, status = true) {
