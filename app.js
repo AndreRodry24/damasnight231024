@@ -1,4 +1,4 @@
-//REQUERINDO MODULOS
+// Requerendo módulos
 import { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
 import * as eventosSocket from './bot/baileys/eventosSocket.js';
 import { BotControle } from './bot/controles/BotControle.js';
@@ -6,7 +6,9 @@ import { MensagemControle } from './bot/controles/MensagemControle.js';
 import configSocket from './bot/baileys/configSocket.js';
 import moment from "moment-timezone";
 import NodeCache from 'node-cache';
-import express from 'express'; // Importando o Express
+import express from 'express';
+import { handleGroupParticipantsUpdate } from './bot/baileys/avisoadm.js';
+
 
 moment.tz.setDefault('America/Sao_Paulo');
 
@@ -14,7 +16,7 @@ moment.tz.setDefault('America/Sao_Paulo');
 const cacheTentativasEnvio = new NodeCache();
 
 // Configuração da porta
-const port = process.env.PORT || 3000; // Defina a porta que o bot vai usar
+const port = process.env.PORT || 3000;
 
 async function connectToWhatsApp() {
     let inicializacaoCompleta = false, eventosEsperando = [];
@@ -28,7 +30,6 @@ async function connectToWhatsApp() {
     
     // Escutando novos eventos
     c.ev.process(async (events) => {
-        // Obtendo dados do bot
         const botInfo = await bot.obterInformacoesBot();
 
         // Atualização na conexão
@@ -61,7 +62,7 @@ async function connectToWhatsApp() {
         // Ao haver mudanças nos participantes de um grupo
         if (events['group-participants.update']) {
             const atualizacao = events['group-participants.update'];
-            if (inicializacaoCompleta) await eventosSocket.atualizacaoParticipantesGrupo(c, atualizacao, botInfo);
+            if (inicializacaoCompleta) await handleGroupParticipantsUpdate(c, atualizacao, botInfo); // Chamada da função
             else eventosEsperando.push({ evento: 'group-participants.update', dados: atualizacao });
         }
 
